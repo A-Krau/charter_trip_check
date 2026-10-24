@@ -96,10 +96,14 @@ repeat competitors on a route over weeks or months.
 - API credentials come from environment variables / a `.env` file and are
   never committed.
 - One `docker compose up` brings everything up.
+- Runs on self-hosted hardware: the image should build for both amd64 and arm64,
+  the port should be configurable, and the app is reached over the home network.
+  No built-in auth in v1. Put it behind a reverse proxy or VPN if it is exposed
+  beyond the LAN.
 
 ## Open questions
 
 1. ~~OpenSky terms~~ Resolved 2026-10-24: the tool is for one person's
    personal, non-commercial use, which fits OpenSky's free tier.
 2. Which v2 source to use for planned flights (AeroAPI is the likely choice).
-3. Where the container will run (a home server, a laptop, or a cloud VM).
+3. ~~Hosting~~ Resolved 2026-10-24: self-hosted hardware (see Technical constraints).
