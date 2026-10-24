@@ -42,6 +42,12 @@ Then run `docker compose up -d` again.
 - **Unconfirmed flights** had one end that OpenSky could not determine, such as
   a jet that left your departure airport but dropped out of receiver coverage
   before landing. They are worth a look, not proof.
+- **Estimating the unknown end:** opening an unconfirmed flight estimates where
+  it came from or went. It uses where the track starts or ends (high
+  confidence if the aircraft was low or on the ground near an airport) and
+  the aircraft's previous landing or next departure. **Estimate unknown ends**
+  does this for every unconfirmed flight in the list, and likely matches move
+  to the top. Each estimate uses two OpenSky requests and is cached.
 - Click a flight to see its track, colored by altitude, plus links to ADS-B
   Exchange, FlightAware, Flightradar24 and the FAA registry for that aircraft.
 - **Time window:** use a preset, **Around a time** (a moment plus or minus 1 to

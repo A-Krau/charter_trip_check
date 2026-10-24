@@ -77,6 +77,8 @@
           </div>
           <select id="operator-filter" aria-label="Operator"><option value="">All operators</option></select>
           <label class="toggle"><input type="checkbox" id="show-possible" checked> Show unconfirmed</label>
+          <button type="button" class="ghost" id="estimate-all" hidden
+            title="Look up where each unconfirmed flight probably came from or went (uses OpenSky requests)">Estimate unknown ends</button>
         </div>
         <ul class="flight-list" id="flight-list"></ul>
       </section>
@@ -110,6 +112,7 @@
           </div>
         </div>
         <div class="match-note" id="d-match"></div>
+        <div class="estimate" id="d-estimate" hidden></div>
         <dl class="facts" id="d-facts"></dl>
         <div class="links" id="d-links"></div>
         <div class="track-note" id="d-track"></div>

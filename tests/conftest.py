@@ -18,6 +18,7 @@ class FakeOpenSky:
         self.calls: list[tuple] = []
         self.metadata: dict[str, dict] = {}
         self.tracks: dict[str, dict] = {}
+        self.aircraft: dict[str, list[dict]] = {}
 
     def departures(self, airport, begin, end):
         self.calls.append(("dep", airport, begin))
@@ -30,6 +31,9 @@ class FakeOpenSky:
     def aircraft_metadata(self, icao24):
         self.calls.append(("meta", icao24))
         return self.metadata.get(icao24)
+
+    def aircraft_flights(self, icao24, begin, end):
+        return [f for f in self.aircraft.get(icao24, []) if begin <= f["firstSeen"] <= end]
 
     def track(self, icao24, at):
         return self.tracks.get(icao24)

@@ -315,7 +315,7 @@ function flightRow(f) {
   const li = document.createElement("li");
   li.className = "flight" + (f.match === "confirmed" ? "" : " unconfirmed") + (state.selected === f ? " selected" : "");
   const t = f.departure.time || f.arrival.time;
-  const tag = f.match === "origin_only" ? "dest. unknown" : f.match === "dest_only" ? "origin unknown" : "";
+  const tag = unknownEndTag(f);
   li.innerHTML = `
     <div class="flight-main">
       <span class="flight-reg">${esc(f.registration || f.icao24.toUpperCase())}</span>
@@ -337,7 +337,9 @@ function renderResults() {
   fillOperatorFilter();
   const shown = visibleFlights();
   const confirmed = shown.filter((f) => f.match === "confirmed");
-  const possible = shown.filter((f) => f.match !== "confirmed");
+  // Unconfirmed flights estimated to match the route float to the top.
+  const likely = (f) => { const t = unknownEndTag(f); return t.startsWith("likely") ? 0 : t.includes("≈") ? 2 : 1; };
+  const possible = shown.filter((f) => f.match !== "confirmed").sort((a, b) => likely(a) - likely(b));
   const filtered = shown.length !== r.flights.length;
   const showPossible = $("#show-possible").checked;
   const list = $("#flight-list");
@@ -360,11 +362,91 @@ function renderResults() {
       (r.end > Date.now() / 1000 - 1.5 * DAY ? " Recent flights may not be published yet." : "");
     list.append(li);
   }
+  $("#estimate-all").hidden = !(showPossible && possible.some((f) => !f.estimate));
   if (showPossible && possible.length) {
     label("Unconfirmed: one end not detected");
     possible.forEach((f) => list.append(flightRow(f)));
   }
 }
+
+// ---------- estimating an unknown origin or destination ----------
+
+const unknownEnd = (f) => (f.match === "dest_only" ? "origin" : f.match === "origin_only" ? "destination" : null);
+
+async function estimateFlight(f) {
+  const end = unknownEnd(f);
+  if (!end || f.estimate) return f.estimate;
+  f.estimate = await api("/api/estimate", { icao24: f.icao24, first: f.departure.time, last: f.arrival.time, end });
+  return f.estimate;
+}
+
+function unknownEndTag(f) {
+  const end = unknownEnd(f);
+  if (!end) return "";
+  const best = f.estimate?.best;
+  if (!best) return f.estimate ? `${end === "origin" ? "origin" : "dest."} unknown` : end === "origin" ? "origin unknown" : "dest. unknown";
+  const target = end === "origin" ? state.result.origin.code : state.result.destination.code;
+  return best.code === target ? `likely match (${best.confidence})` : `${end === "origin" ? "from" : "to"} ≈ ${best.code}`;
+}
+
+function renderLegCodes(f) {
+  const best = f.estimate?.best, end = unknownEnd(f);
+  const code = (side) => {
+    const known = f[side].airport;
+    if (known) return esc(known);
+    const guess = best && ((side === "departure" && end === "origin") || (side === "arrival" && end === "destination"));
+    return guess ? `<span class="guess" title="Estimated">${esc(best.code)}?</span>` : "?";
+  };
+  $("#d-dep-code").innerHTML = code("departure");
+  $("#d-arr-code").innerHTML = code("arrival");
+}
+
+function renderEstimate(f) {
+  const e = f.estimate, box = $("#d-estimate");
+  const what = e.end === "origin" ? "origin" : "destination";
+  const lines = [];
+  if (e.best) {
+    const a = (e.track?.candidates || []).find((c) => c.code === e.best.code) || e.neighbour?.airport;
+    lines.push(`<div class="est-best">Estimated ${what}: <strong>${esc(e.best.code)}</strong>${a?.name ? ` · ${esc(a.name)}` : ""}
+      <span class="conf conf-${e.best.confidence}">${e.best.confidence} confidence</span></div>`);
+  } else {
+    lines.push(`<div class="est-best">Not enough data to estimate the ${what}.</div>`);
+  }
+  const tr = e.track;
+  if (tr) {
+    const p = tr.point, ft = p.alt_m != null ? `${Math.round(p.alt_m * 3.281 / 100) * 100} ft` : "unknown altitude";
+    const where = e.end === "origin" ? "First seen" : "Last seen";
+    const state_ = p.on_ground ? "on the ground" : `at ${ft}`;
+    const near = tr.candidates.length
+      ? tr.candidates.map((c) => `${esc(c.code)} (${c.distance_km} km)`).join(", ")
+      : "no airport close by";
+    lines.push(`<div>${where} ${state_}, near ${near}.</div>`);
+  }
+  if (e.neighbour) {
+    const t = e.neighbour.time ? ` (${fmtDate(e.neighbour.time)} ${fmtTime(e.neighbour.time)})` : "";
+    lines.push(`<div>${e.end === "origin" ? "Previous landing" : "Next departure"}: <strong>${esc(e.neighbour.code)}</strong>${t}.</div>`);
+  }
+  box.innerHTML = lines.join("");
+  renderLegCodes(f);
+  renderResults();
+}
+
+$("#estimate-all").addEventListener("click", async (ev) => {
+  const btn = ev.currentTarget;
+  const todo = visibleFlights().filter((f) => unknownEnd(f) && !f.estimate);
+  btn.disabled = true;
+  try {
+    for (let i = 0; i < todo.length; i++) {
+      btn.textContent = `Estimating ${i + 1}/${todo.length}…`;
+      try { await estimateFlight(todo[i]); } catch (e) { if (/allowance/.test(e.message)) { showMessage(esc(e.message), true); break; } }
+      renderResults();
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Estimate unknown ends";
+    renderResults();
+  }
+});
 
 // ---------- detail panel ----------
 
@@ -374,8 +456,7 @@ function selectFlight(f) {
   const reg = f.registration || f.icao24.toUpperCase();
   $("#d-callsign").textContent = f.callsign || reg;
   $("#d-sub").textContent = [f.callsign ? reg : "", f.typecode, operatorOf(f)].filter(Boolean).join(" · ");
-  $("#d-dep-code").textContent = f.departure.airport || "?";
-  $("#d-arr-code").textContent = f.arrival.airport || "?";
+  renderLegCodes(f);
   $("#d-dep-time").textContent = f.departure.time ? `${fmtDate(f.departure.time)} ${fmtTime(f.departure.time)}` : "";
   $("#d-arr-time").textContent = f.arrival.time ? `${fmtDate(f.arrival.time)} ${fmtTime(f.arrival.time)}` : "";
   $("#d-dep-utc").textContent = f.departure.time ? fmtUtc(f.departure.time) : "";
@@ -389,6 +470,16 @@ function selectFlight(f) {
     : f.match === "origin_only"
       ? `Left ${state.result.origin.code}, but OpenSky could not tell where it landed. It may or may not have gone to ${state.result.destination.code}.`
       : `Landed at ${state.result.destination.code}, but OpenSky could not tell where it came from.`;
+  const estBox = $("#d-estimate");
+  estBox.hidden = f.match === "confirmed";
+  if (f.match !== "confirmed") {
+    if (f.estimate) renderEstimate(f);
+    else {
+      estBox.innerHTML = `<span class="spinner"></span>Estimating the ${f.match === "dest_only" ? "origin" : "destination"}…`;
+      estimateFlight(f).then(() => { if (state.selected === f) renderEstimate(f); })
+        .catch((e) => { if (state.selected === f) estBox.textContent = `Could not estimate: ${e.message}`; });
+    }
+  }
 
   const facts = [
     ["Registration", f.registration], ["Aircraft", [f.typecode, f.model].filter(Boolean).join(" · ")],

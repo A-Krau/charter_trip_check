@@ -37,8 +37,8 @@ def flights_for(day: int, origin: str, dest: str) -> list[dict]:
     return out
 
 
-def track(f: dict) -> dict:
-    (la1, lo1), (la2, lo2) = AIRPORTS[f["estDepartureAirport"]], AIRPORTS["KPBI"]
+def track(f: dict, dest: str) -> dict:
+    (la1, lo1), (la2, lo2) = AIRPORTS[f["estDepartureAirport"]], AIRPORTS[dest]
     n, path = 60, []
     for i in range(n + 1):
         t = i / n
@@ -70,9 +70,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, fl) if fl else self._send(404)
         if u.path == "/api/tracks/all":
             day = int(q["time"]) // 86400 * 86400
-            for f in flights_for(day, "KTEB", "KPBI"):
-                if f["icao24"] == q["icao24"]:
-                    return self._send(200, track(f))
+            for dest in AIRPORTS:
+                for f in flights_for(day, "KTEB", dest) if dest != "KTEB" else []:
+                    if f["icao24"] == q["icao24"] and f["firstSeen"] <= int(q["time"]) <= f["lastSeen"]:
+                        return self._send(200, track(f, dest))
             return self._send(404)
         if u.path.startswith("/api/metadata/aircraft/icao/"):
             icao = u.path.rsplit("/", 1)[1]

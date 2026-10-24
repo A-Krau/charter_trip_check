@@ -2,6 +2,7 @@
 
 import csv
 import gzip
+import math
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -88,3 +89,23 @@ class AirportIndex:
         hits.sort(key=lambda h: h[0])
         result = [h[1] for h in hits[: limit - (1 if exact else 0)]]
         return ([exact] if exact else []) + result
+
+    def nearest(self, lat: float, lon: float, max_km: float, limit: int = 3) -> list[tuple[Airport, float]]:
+        """Airports within max_km of a point, closest first (small strips count a bit farther)."""
+        dlat = max_km / 111.0
+        dlon = max_km / (111.0 * max(math.cos(math.radians(lat)), 0.05))
+        hits = []
+        for a in self.airports:
+            if abs(a.lat - lat) > dlat or abs(a.lon - lon) > dlon:
+                continue
+            d = haversine_km(lat, lon, a.lat, a.lon)
+            if d <= max_km:
+                hits.append((d * (1.0 if a.type != "small" else 1.5), d, a))
+        hits.sort(key=lambda h: h[0])
+        return [(a, d) for _, d, a in hits[:limit]]
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    h = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    return 2 * 6371.0 * math.asin(math.sqrt(h))

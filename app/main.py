@@ -11,6 +11,7 @@ from .aircraft import AircraftDirectory
 from .airports import AirportIndex
 from .cache import Cache
 from .config import Settings
+from .estimate import Estimator
 from .opensky import OpenSkyClient, OpenSkyError
 from .search import DAY, RouteSearch
 
@@ -29,6 +30,7 @@ def create_app(settings: Settings | None = None, opensky: OpenSkyClient | None =
     if extra_ops.is_file():
         from .aircraft import load_operators
         aircraft.operators.update(load_operators(extra_ops))
+    estimator = Estimator(opensky, cache, airports)
     search = RouteSearch(opensky, cache, aircraft, **({"clock": clock} if clock else {}))
 
     app = FastAPI(title="Charter Trip Check", docs_url="/api/docs", openapi_url="/api/openapi.json")
@@ -77,23 +79,30 @@ def create_app(settings: Settings | None = None, opensky: OpenSkyClient | None =
             logging.exception("search failed")
             raise HTTPException(502, f"Could not reach OpenSky: {e.__class__.__name__}")
 
-    @app.get("/api/track")
-    def track(icao24: str, time: int):
-        key = f"track:{icao24.lower()}:{time}"
-        cached = cache.get(key)
-        if cached is not None:
-            return cached
+    def opensky_errors(fn):
         try:
-            raw = opensky.track(icao24, time)
+            return fn()
         except OpenSkyError as e:
             raise HTTPException(502 if e.status != 429 else 429, str(e))
-        except Exception as e:
+        except Exception as e:  # network failure talking to OpenSky
+            logging.exception("OpenSky call failed")
             raise HTTPException(502, f"Could not reach OpenSky: {e.__class__.__name__}")
-        if not raw or not raw.get("path"):
+
+    @app.get("/api/track")
+    def track(icao24: str, time: int):
+        result = opensky_errors(lambda: estimator.track(icao24, time))
+        if not result:
             raise HTTPException(404, "No track available for this flight.")
-        result = {"icao24": raw.get("icao24"), "path": raw["path"]}
-        cache.set(key, result, 30 * DAY)
         return result
+
+    @app.get("/api/estimate")
+    def estimate(
+        icao24: str,
+        first: int = Query(..., description="firstSeen of the flight"),
+        last: int = Query(..., description="lastSeen of the flight"),
+        end: str = Query(..., pattern="^(origin|destination)$"),
+    ):
+        return opensky_errors(lambda: estimator.estimate(icao24, first, last, end))
 
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

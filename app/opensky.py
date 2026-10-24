@@ -66,6 +66,9 @@ class OpenSkyClient:
     def arrivals(self, airport: str, begin: int, end: int) -> list[dict]:
         return self._get("/flights/arrival", {"airport": airport, "begin": begin, "end": end}) or []
 
+    def aircraft_flights(self, icao24: str, begin: int, end: int) -> list[dict]:
+        return self._get("/flights/aircraft", {"icao24": icao24.lower(), "begin": begin, "end": end}) or []
+
     def track(self, icao24: str, at: int) -> dict | None:
         return self._get("/tracks/all", {"icao24": icao24.lower(), "time": at})
 
