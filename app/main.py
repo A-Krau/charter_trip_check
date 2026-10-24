@@ -41,7 +41,11 @@ def create_app(settings: Settings | None = None, opensky: OpenSkyClient | None =
 
     @app.get("/api/status")
     def status():
-        return {"authenticated": settings.has_credentials, "max_window_days": settings.max_window_days}
+        return {
+            "authenticated": settings.has_credentials,
+            "max_window_days": settings.max_window_days,
+            "map": {"url": settings.map_tile_url, "attribution": settings.map_attribution, "dark": settings.map_dark},
+        }
 
     @app.get("/api/airports")
     def airport_search(q: str = Query(..., min_length=1), limit: int = Query(8, le=25)):

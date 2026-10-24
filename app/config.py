@@ -27,6 +27,18 @@ class Settings:
     # registration, type and operator lookups.
     aircraft_db_path: str = field(default_factory=lambda: _env("AIRCRAFT_DB_PATH"))
     max_window_days: int = field(default_factory=lambda: int(_env("MAX_WINDOW_DAYS", "7")))
+    # Background map. The default OpenStreetMap tiles need no API key.
+    map_tile_url: str = field(
+        default_factory=lambda: _env("MAP_TILE_URL", "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+    )
+    map_attribution: str = field(
+        default_factory=lambda: _env(
+            "MAP_ATTRIBUTION",
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        )
+    )
+    # Darken light map tiles in the browser to keep the dark look.
+    map_dark: bool = field(default_factory=lambda: _env("MAP_DARK", "true").lower() not in ("0", "false", "no"))
 
     @property
     def has_credentials(self) -> bool:

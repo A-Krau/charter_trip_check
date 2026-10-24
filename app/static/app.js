@@ -39,10 +39,19 @@ const operatorOf = (f) => f.callsign_operator || f.operator || f.owner || "";
 
 const map = L.map("map", { zoomControl: false, worldCopyJump: true, attributionControl: true }).setView([39.5, -96], 4);
 L.control.zoom({ position: "bottomright" }).addTo(map);
-L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
-  subdomains: "abcd", maxZoom: 18,
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a> · Flights: <a href="https://opensky-network.org">OpenSky Network</a>',
-}).addTo(map);
+const DEFAULT_TILES = {
+  url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  dark: true,
+};
+function setBaseMap(cfg) {
+  cfg = { ...DEFAULT_TILES, ...(cfg || {}) };
+  document.body.classList.toggle("map-dark", !!cfg.dark);
+  L.tileLayer(cfg.url, {
+    maxZoom: 19,
+    attribution: `${cfg.attribution} · Flights: <a href="https://opensky-network.org">OpenSky Network</a>`,
+  }).addTo(map);
+}
 
 const routeLayer = L.layerGroup().addTo(map);
 const trackLayer = L.layerGroup().addTo(map);
@@ -408,13 +417,15 @@ $("#export").addEventListener("click", () => {
 // ---------- startup ----------
 
 (async function init() {
+  let s = null;
   try {
-    const s = await api("/api/status");
+    s = await api("/api/status");
     const el = $("#api-status");
     el.textContent = s.authenticated ? "OpenSky account" : "OpenSky anonymous";
     el.classList.add(s.authenticated ? "ok" : "anon");
     el.title = s.authenticated ? "Using your OpenSky API client" : "No OpenSky credentials set; anonymous limits apply";
   } catch { /* status is cosmetic */ }
+  setBaseMap(s?.map);
 
   const qs = new URLSearchParams(location.search);
   if (qs.get("w")) document.querySelector(`.chip[data-preset="${CSS.escape(qs.get("w"))}"]`)?.click();

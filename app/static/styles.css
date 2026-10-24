@@ -188,6 +188,8 @@ input { font: inherit; }
 
 /* Map bits */
 .leaflet-container { background: #1b1d20; font: inherit; }
+/* Turns light map tiles (like standard OpenStreetMap) into a dark map. */
+body.map-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.95) contrast(.9) saturate(.35); }
 .leaflet-control-attribution { background: rgba(0,0,0,.55) !important; color: #aaa !important; }
 .leaflet-control-attribution a { color: #ccc !important; }
 .leaflet-bar a { background: var(--panel-2); color: var(--text); border-bottom-color: var(--line); }
