@@ -1,0 +1,11 @@
+{
+  "_comment": "ICAO three-letter callsign prefixes of charter, fractional and management operators. Starter list; add the competitors you see. Keys starting with _ are ignored.",
+  "EJA": "NetJets",
+  "NJE": "NetJets Europe",
+  "LXJ": "Flexjet",
+  "VJT": "VistaJet",
+  "XOJ": "XOJET",
+  "WUP": "Wheels Up",
+  "JTL": "Jet Linx",
+  "EJM": "Executive Jet Management"
+}

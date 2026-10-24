@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Charter Trip Check</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#plane"/></svg>
+      <span class="brand-name">Charter<b>Trip</b>Check</span>
+    </div>
+    <div class="topbar-route" id="topbar-route" hidden></div>
+    <div class="topbar-status" id="api-status" title="OpenSky connection"></div>
+  </header>
+
+  <main class="layout">
+    <aside class="sidebar" id="sidebar">
+      <form class="search" id="search-form" autocomplete="off">
+        <div class="route-inputs">
+          <div class="field ac">
+            <label for="from">From</label>
+            <input id="from" name="from" placeholder="TEB or Teterboro" required spellcheck="false">
+            <ul class="ac-list" role="listbox" hidden></ul>
+          </div>
+          <button type="button" class="swap" id="swap" title="Swap airports" aria-label="Swap airports">⇅</button>
+          <div class="field ac">
+            <label for="to">To</label>
+            <input id="to" name="to" placeholder="PBI or Palm Beach" required spellcheck="false">
+            <ul class="ac-list" role="listbox" hidden></ul>
+          </div>
+        </div>
+
+        <div class="presets" role="radiogroup" aria-label="Time window">
+          <button type="button" data-preset="24h" class="chip active">Last 24h</button>
+          <button type="button" data-preset="yesterday" class="chip">Yesterday</button>
+          <button type="button" data-preset="3d" class="chip">Last 3 days</button>
+          <button type="button" data-preset="7d" class="chip">Last 7 days</button>
+          <button type="button" data-preset="custom" class="chip">Custom</button>
+        </div>
+        <div class="custom-window" id="custom-window" hidden>
+          <div class="field"><label for="begin">Start</label><input type="datetime-local" id="begin"></div>
+          <div class="field"><label for="end">End</label><input type="datetime-local" id="end"></div>
+        </div>
+
+        <button type="submit" class="go" id="go">Find flights</button>
+        <p class="hint">OpenSky publishes flights in a nightly batch, so today's flights usually show up tomorrow.</p>
+      </form>
+
+      <section class="results" id="results" hidden>
+        <div class="results-head">
+          <div id="results-summary"></div>
+          <button type="button" class="ghost" id="export" title="Download as CSV">CSV</button>
+        </div>
+        <div class="filter-row">
+          <label class="toggle"><input type="checkbox" id="show-possible" checked> Show unconfirmed</label>
+        </div>
+        <ul class="flight-list" id="flight-list"></ul>
+      </section>
+
+      <div class="message" id="message" hidden></div>
+    </aside>
+
+    <section class="detail" id="detail" hidden>
+      <div class="detail-head">
+        <div>
+          <div class="detail-callsign" id="d-callsign"></div>
+          <div class="detail-sub" id="d-sub"></div>
+        </div>
+        <button type="button" class="close" id="detail-close" aria-label="Close">×</button>
+      </div>
+      <div class="detail-body">
+        <div class="leg">
+          <div class="leg-end">
+            <div class="leg-code" id="d-dep-code"></div>
+            <div class="leg-time" id="d-dep-time"></div>
+            <div class="leg-utc" id="d-dep-utc"></div>
+          </div>
+          <div class="leg-mid">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><use href="#plane"/></svg>
+            <div class="leg-dur" id="d-dur"></div>
+          </div>
+          <div class="leg-end right">
+            <div class="leg-code" id="d-arr-code"></div>
+            <div class="leg-time" id="d-arr-time"></div>
+            <div class="leg-utc" id="d-arr-utc"></div>
+          </div>
+        </div>
+        <div class="match-note" id="d-match"></div>
+        <dl class="facts" id="d-facts"></dl>
+        <div class="links" id="d-links"></div>
+        <div class="track-note" id="d-track"></div>
+      </div>
+    </section>
+
+    <div class="map" id="map"></div>
+    <div class="alt-legend" id="alt-legend" hidden>
+      <span>0</span><div class="alt-bar"></div><span>40k ft</span>
+    </div>
+  </main>
+
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="plane" viewBox="0 0 24 24">
+      <path d="M12 1.5c.8 0 1.4 1 1.4 2.2v5.6l8.1 4.6v2.1l-8.1-2.4v4.7l2.3 1.7v1.7L12 20.6l-3.7 1.1V20l2.3-1.7v-4.7l-8.1 2.4v-2.1l8.1-4.6V3.7c0-1.2.6-2.2 1.4-2.2z"/>
+    </symbol>
+  </svg>
+
+  <script src="/static/vendor/leaflet/leaflet.js"></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
