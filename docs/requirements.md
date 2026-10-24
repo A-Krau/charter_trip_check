@@ -99,9 +99,7 @@ repeat competitors on a route over weeks or months.
 
 ## Open questions
 
-1. **OpenSky terms:** free access is meant for non-commercial and research use,
-   and OpenSky offers a separate commercial tier. Confirm that personal
-   competitive analysis is acceptable, or plan for the commercial tier or
-   another provider.
+1. ~~OpenSky terms~~ Resolved 2026-10-24: the tool is for one person's
+   personal, non-commercial use, which fits OpenSky's free tier.
 2. Which v2 source to use for planned flights (AeroAPI is the likely choice).
 3. Where the container will run (a home server, a laptop, or a cloud VM).
