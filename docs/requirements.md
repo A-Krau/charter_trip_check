@@ -51,8 +51,11 @@ Nice to have: sort/filter by operator or type, and export to CSV.
 
 **OpenSky Network REST API**
 - `GET /flights/departure?airport=<ICAO>&begin=<unix>&end=<unix>`, filtered by
-  `estArrivalAirport` to the requested destination.
-- Max 7 days per query. Longer windows are split into chunks.
+  `estArrivalAirport` to the requested destination, plus `/flights/arrival` at the
+  destination filtered by `estDepartureAirport`. Flights with one end unknown are
+  shown as unconfirmed.
+- Arrivals and departures are both queried, one UTC day per request (OpenSky caps
+  airport queries at a few days). Search windows are capped at 7 days.
 - Flight data is batch-processed, so the most recent flights appear with a
   delay (typically by the next day).
 - Auth: OAuth2 client credentials (a free account). Free accounts get a daily

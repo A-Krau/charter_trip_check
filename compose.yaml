@@ -1,0 +1,17 @@
+services:
+  charter-trip-check:
+    build: .
+    image: charter-trip-check:latest
+    container_name: charter-trip-check
+    restart: unless-stopped
+    ports:
+      - "${HOST_PORT:-8080}:8000"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Cache, plus optional operators.json / aircraftDatabase.csv you copy in.
+      - ctc-data:/data
+
+volumes:
+  ctc-data:
