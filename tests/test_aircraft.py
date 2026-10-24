@@ -1,4 +1,4 @@
-from app.aircraft import load_operators, operator_from_callsign, us_registration
+from app.aircraft import category, load_operators, operator_from_callsign, us_registration
 
 
 def test_us_registration_known_values():
@@ -28,3 +28,13 @@ def test_operator_from_callsign():
     assert operator_from_callsign("EJA512 ", ops) == "NetJets"
     assert operator_from_callsign("LXJ401", ops) == "Flexjet"
     assert operator_from_callsign("N123AB", ops) is None
+
+
+def test_category():
+    assert category("EJA512", "C68A", "NetJets") == "ga"
+    assert category("N123AB", "", "") == "ga"
+    assert category("", "", "") == "ga"
+    assert category("JBU1234", "", "") == "airline"
+    assert category("DAL400", "A321", "") == "airline"
+    assert category("ABC12", "CL35", "") == "ga"  # unknown charter designator flying a bizjet
+    assert category("N737BZ", "B737", "") == "airline"  # airliner type wins

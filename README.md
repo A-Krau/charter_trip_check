@@ -44,7 +44,13 @@ Then run `docker compose up -d` again.
   before landing. They are worth a look, not proof.
 - Click a flight to see its track, colored by altitude, plus links to ADS-B
   Exchange, FlightAware, Flightradar24 and the FAA registry for that aircraft.
-- **CSV** downloads the current results.
+- **Time window:** use a preset, **Around a time** (a moment plus or minus 1 to
+  12 hours, handy for a trip you were told about), or **Custom** start and end.
+- **Filters:** **General Aviation** covers private, charter, fractional and
+  corporate flights. **Airline** covers airliner types and airline callsigns.
+  The operator list is built from the current results. Like FlightAware's
+  filter, the split is a best guess from callsign and aircraft type.
+- **CSV** downloads the flights currently shown.
 
 ### Limits to know
 

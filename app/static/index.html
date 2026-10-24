@@ -40,7 +40,20 @@
           <button type="button" data-preset="yesterday" class="chip">Yesterday</button>
           <button type="button" data-preset="3d" class="chip">Last 3 days</button>
           <button type="button" data-preset="7d" class="chip">Last 7 days</button>
+          <button type="button" data-preset="around" class="chip">Around a time</button>
           <button type="button" data-preset="custom" class="chip">Custom</button>
+        </div>
+        <div class="custom-window around-window" id="around-window" hidden>
+          <div class="field"><label for="around">Time</label><input type="datetime-local" id="around"></div>
+          <div class="field"><label for="spread">Give or take</label>
+            <select id="spread">
+              <option value="1">± 1 hour</option>
+              <option value="2">± 2 hours</option>
+              <option value="3" selected>± 3 hours</option>
+              <option value="6">± 6 hours</option>
+              <option value="12">± 12 hours</option>
+            </select>
+          </div>
         </div>
         <div class="custom-window" id="custom-window" hidden>
           <div class="field"><label for="begin">Start</label><input type="datetime-local" id="begin"></div>
@@ -57,6 +70,12 @@
           <button type="button" class="ghost" id="export" title="Download as CSV">CSV</button>
         </div>
         <div class="filter-row">
+          <div class="seg" id="category-filter" role="radiogroup" aria-label="Flight type">
+            <button type="button" data-cat="all" class="active">All</button>
+            <button type="button" data-cat="ga">General Aviation</button>
+            <button type="button" data-cat="airline">Airline</button>
+          </div>
+          <select id="operator-filter" aria-label="Operator"><option value="">All operators</option></select>
           <label class="toggle"><input type="checkbox" id="show-possible" checked> Show unconfirmed</label>
         </div>
         <ul class="flight-list" id="flight-list"></ul>

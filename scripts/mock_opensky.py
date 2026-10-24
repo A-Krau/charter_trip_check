@@ -22,6 +22,7 @@ FLEET = [
     ("a4e6a8", "XOJ77", "N77XO", "CL60", "Bombardier Challenger 605", "XOJET"),
     ("a5f7b9", "EJA88", "N88QS", "E55P", "Embraer Phenom 300", "NetJets"),
     ("a6a8ca", "N612WU", "N612WU", "C56X", "Cessna Citation Excel", "Wheels Up"),
+    ("a7b9db", "JBU1234", "N621JB", "A320", "Airbus A320-232", "JetBlue Airways"),
 ]
 
 

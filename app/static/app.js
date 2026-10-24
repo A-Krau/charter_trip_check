@@ -2,7 +2,7 @@
 
 const $ = (sel) => document.querySelector(sel);
 const DAY = 86400;
-const state = { from: null, to: null, preset: "24h", result: null, selected: null };
+const state = { from: null, to: null, preset: "24h", result: null, selected: null, cat: "all", operator: "" };
 
 // ---------- helpers ----------
 
@@ -233,6 +233,10 @@ function windowFor(preset) {
     const midnight = Math.floor(d.getTime() / 1000);
     return [midnight - DAY, midnight - 1];
   }
+  if (preset === "around") {
+    const t = Date.parse($("#around").value) / 1000, h = +$("#spread").value * 3600;
+    return [Math.floor(t - h), Math.floor(t + h)];
+  }
   const b = Date.parse($("#begin").value) / 1000, e = Date.parse($("#end").value) / 1000;
   return [Math.floor(b), Math.floor(e)];
 }
@@ -240,13 +244,15 @@ function windowFor(preset) {
 document.querySelectorAll(".chip").forEach((chip) => chip.addEventListener("click", () => {
   document.querySelectorAll(".chip").forEach((c) => c.classList.toggle("active", c === chip));
   state.preset = chip.dataset.preset;
-  const custom = state.preset === "custom";
+  const now = Math.floor(Date.now() / 1000);
+  const custom = state.preset === "custom", around = state.preset === "around";
   $("#custom-window").hidden = !custom;
+  $("#around-window").hidden = !around;
   if (custom && !$("#begin").value) {
-    const now = Math.floor(Date.now() / 1000);
     $("#begin").value = toLocalInput(now - 2 * DAY);
     $("#end").value = toLocalInput(now);
   }
+  if (around && !$("#around").value) $("#around").value = toLocalInput(now - DAY - (now % 3600));
 }));
 
 // ---------- search & results ----------
@@ -261,7 +267,7 @@ async function runSearch(e) {
   const [from, to] = await Promise.all([acFrom.resolve(), acTo.resolve()]);
   if (!from || !to) { showMessage("Pick both airports from the suggestions.", true); return; }
   const [begin, end] = windowFor(state.preset);
-  if (!(begin < end)) { showMessage("Set a start and an end for the custom window.", true); return; }
+  if (!(begin < end)) { showMessage("Set the time window first.", true); return; }
 
   closeDetail();
   $("#results").hidden = true;
@@ -273,6 +279,7 @@ async function runSearch(e) {
     renderResults();
     const qs = new URLSearchParams({ from: from.code, to: to.code, w: state.preset });
     if (state.preset === "custom") { qs.set("b", begin); qs.set("e", end); }
+    if (state.preset === "around") { qs.set("t", Math.round((begin + end) / 2)); qs.set("h", $("#spread").value); }
     history.replaceState(null, "", "?" + qs);
   } catch (err) {
     showMessage(`<strong>Search failed.</strong> ${esc(err.message)}`, true);
@@ -282,6 +289,27 @@ async function runSearch(e) {
 }
 $("#search-form").addEventListener("submit", runSearch);
 $("#show-possible").addEventListener("change", renderResults);
+document.querySelectorAll("#category-filter button").forEach((btn) => btn.addEventListener("click", () => {
+  document.querySelectorAll("#category-filter button").forEach((b) => b.classList.toggle("active", b === btn));
+  state.cat = btn.dataset.cat;
+  renderResults();
+}));
+$("#operator-filter").addEventListener("change", (e) => { state.operator = e.target.value; renderResults(); });
+
+const UNKNOWN_OP = "Operator unknown";
+const opKey = (f) => operatorOf(f) || UNKNOWN_OP;
+const passesFilters = (f) => (state.cat === "all" || f.category === state.cat) && (!state.operator || opKey(f) === state.operator);
+const visibleFlights = () => (state.result?.flights || []).filter(passesFilters);
+
+function fillOperatorFilter() {
+  const counts = new Map();
+  state.result.flights.filter((f) => state.cat === "all" || f.category === state.cat)
+    .forEach((f) => counts.set(opKey(f), (counts.get(opKey(f)) || 0) + 1));
+  const ops = [...counts].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+  if (state.operator && !counts.has(state.operator)) state.operator = "";
+  $("#operator-filter").innerHTML = '<option value="">All operators</option>' +
+    ops.map(([op, n]) => `<option value="${esc(op)}"${op === state.operator ? " selected" : ""}>${esc(op)} (${n})</option>`).join("");
+}
 
 function flightRow(f) {
   const li = document.createElement("li");
@@ -293,6 +321,7 @@ function flightRow(f) {
       <span class="flight-reg">${esc(f.registration || f.icao24.toUpperCase())}</span>
       ${f.callsign ? `<span class="flight-cs">${esc(f.callsign)}</span>` : ""}
       ${f.typecode ? `<span class="type-badge">${esc(f.typecode)}</span>` : ""}
+      ${f.category === "airline" ? '<span class="cat-badge">Airline</span>' : ""}
       ${tag ? `<span class="tag">${tag}</span>` : ""}
     </div>
     <div class="flight-time">${t ? fmtTime(t) : "–"}</div>
@@ -305,17 +334,20 @@ function flightRow(f) {
 function renderResults() {
   const r = state.result;
   if (!r) return;
-  const confirmed = r.flights.filter((f) => f.match === "confirmed");
-  const possible = r.flights.filter((f) => f.match !== "confirmed");
+  fillOperatorFilter();
+  const shown = visibleFlights();
+  const confirmed = shown.filter((f) => f.match === "confirmed");
+  const possible = shown.filter((f) => f.match !== "confirmed");
+  const filtered = shown.length !== r.flights.length;
   const showPossible = $("#show-possible").checked;
   const list = $("#flight-list");
   list.innerHTML = "";
 
   $("#results").hidden = false;
   $("#results-summary").innerHTML = `<strong>${confirmed.length}</strong> confirmed flight${confirmed.length === 1 ? "" : "s"}` +
-    (possible.length ? ` · ${possible.length} unconfirmed` : "");
+    (possible.length ? ` · ${possible.length} unconfirmed` : "") + (filtered ? ` <span class="muted">(filtered from ${r.flights.length})</span>` : "");
   $("#topbar-route").hidden = false;
-  $("#topbar-route").innerHTML = `<strong>${esc(r.origin.code)}</strong> → <strong>${esc(r.destination.code)}</strong> · ${fmtDate(r.begin)} – ${fmtDate(r.end)}`;
+  $("#topbar-route").innerHTML = `<strong>${esc(r.origin.code)}</strong> → <strong>${esc(r.destination.code)}</strong> · ${r.end - r.begin <= 2 * DAY ? `${fmtDate(r.begin)} ${fmtTime(r.begin)} – ${fmtDate(r.end)} ${fmtTime(r.end)}` : `${fmtDate(r.begin)} – ${fmtDate(r.end)}`}`;
 
   const label = (text) => { const li = document.createElement("li"); li.className = "section-label"; li.textContent = text; list.append(li); };
   if (confirmed.length) {
@@ -324,7 +356,7 @@ function renderResults() {
   } else {
     const li = document.createElement("li");
     li.className = "message";
-    li.innerHTML = `No confirmed flights from <strong>${esc(r.origin.code)}</strong> to <strong>${esc(r.destination.code)}</strong> in this window.` +
+    li.innerHTML = `No confirmed ${filtered ? "flights match the filters" : `flights from <strong>${esc(r.origin.code)}</strong> to <strong>${esc(r.destination.code)}</strong> in this window`}.` +
       (r.end > Date.now() / 1000 - 1.5 * DAY ? " Recent flights may not be published yet." : "");
     list.append(li);
   }
@@ -398,10 +430,10 @@ $("#detail-close").addEventListener("click", () => { closeDetail(); drawRoute();
 $("#export").addEventListener("click", () => {
   const r = state.result;
   if (!r) return;
-  const cols = ["match", "registration", "callsign", "typecode", "model", "callsign_operator", "operator", "owner", "icao24",
+  const cols = ["match", "category", "registration", "callsign", "typecode", "model", "callsign_operator", "operator", "owner", "icao24",
     "departure_airport", "departure_utc", "arrival_airport", "arrival_utc"];
   const iso = (t) => (t ? new Date(t * 1000).toISOString() : "");
-  const rows = r.flights.map((f) => ({
+  const rows = visibleFlights().map((f) => ({
     ...f, departure_airport: f.departure.airport, departure_utc: iso(f.departure.time),
     arrival_airport: f.arrival.airport, arrival_utc: iso(f.arrival.time),
   }));
@@ -429,6 +461,10 @@ $("#export").addEventListener("click", () => {
 
   const qs = new URLSearchParams(location.search);
   if (qs.get("w")) document.querySelector(`.chip[data-preset="${CSS.escape(qs.get("w"))}"]`)?.click();
+  if (qs.get("w") === "around" && qs.get("t")) {
+    $("#around").value = toLocalInput(+qs.get("t"));
+    if (qs.get("h")) $("#spread").value = qs.get("h");
+  }
   if (qs.get("w") === "custom" && qs.get("b") && qs.get("e")) {
     $("#begin").value = toLocalInput(+qs.get("b"));
     $("#end").value = toLocalInput(+qs.get("e"));

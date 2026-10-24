@@ -80,6 +80,26 @@ def operator_from_callsign(callsign: str, operators: dict[str, str]) -> str | No
     return None
 
 
+# --- General aviation vs. airline, in the spirit of FlightAware's filter ---
+
+_AIRLINER_TYPE = re.compile(
+    r"^(A3\d\d|A2[01]N|A31\d|A32\d|B7[0-9]\d|B3[789]M|B3XM|B71\d|E1[79]\d|E2[0-9]\d|E75[LS]|E1[34]5|"
+    r"CRJ[1-9X]|DH8[A-D]|AT[47]\d|BCS[13]|MD[89]\d|SF34|SB20|J328|F70|F100|DC\d\d?|IL\d\d|SU95|C919|ARJ21)$"
+)
+_ICAO_CALLSIGN = re.compile(r"^[A-Z]{3}\d")
+
+
+def category(callsign: str, typecode: str, callsign_operator: str) -> str:
+    """'ga' (private, charter, fractional, corporate) or 'airline'."""
+    cs, tc = callsign.strip().upper(), typecode.strip().upper()
+    if tc and _AIRLINER_TYPE.match(tc):
+        return "airline"
+    if callsign_operator or not _ICAO_CALLSIGN.match(cs):
+        return "ga"  # known charter operator, tail-number callsign, or no callsign
+    # An airline-style callsign: trust a known business/GA type over it.
+    return "ga" if tc else "airline"
+
+
 # --- Combined lookup ---
 
 
@@ -168,4 +188,5 @@ class AircraftDirectory:
         info["callsign_operator"] = operator_from_callsign(cs, self.operators) or ""
         for k in ("typecode", "model", "operator", "owner"):
             info.setdefault(k, "")
+        info["category"] = category(cs, info["typecode"], info["callsign_operator"])
         return info
